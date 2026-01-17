@@ -541,11 +541,61 @@ Assistant Answer:
 
 ---
 
+#### ✅ Task 11: Implement file upload in chat
+**Status**: Completed
+
+**What was done**:
+- Added file upload endpoint to chat API
+- Implemented file upload button in chat interface
+- Added file validation (type and size)
+- Integrated with document processing pipeline
+- Added visual feedback for upload status
+
+**Backend files updated**:
+- [backend/app/api/chat.py](backend/app/api/chat.py) - Added POST /api/chat/upload endpoint
+
+**Frontend files updated**:
+- [frontend/src/app/chat/page.tsx](frontend/src/app/chat/page.tsx) - Added file upload UI
+
+**Key features implemented**:
+- **File Upload Endpoint**:
+  - Accepts PDF, CSV, and TXT files
+  - Validates user access to model
+  - Processes file in background with Celery
+  - Returns immediate response with processing status
+  - File size limit: 250MB (configurable)
+
+- **Chat UI Integration**:
+  - File upload button (📎) in chat input area
+  - Hidden file input with proper accept attributes
+  - Visual feedback during upload (⏳)
+  - Success/error toast notifications
+  - System message in chat confirming upload
+  - Disabled state management during upload
+
+- **User Flow**:
+  1. User clicks 📎 button in chat
+  2. File picker opens (PDF/CSV/TXT only)
+  3. File is validated (type and size)
+  4. File uploads to server
+  5. System message appears in chat
+  6. File processes in background
+  7. User can immediately ask questions
+  8. Embeddings become available within seconds
+
+**Validation**:
+- Allowed file types: PDF, CSV, TXT
+- Maximum file size: 250MB
+- Model access verification
+- User authentication required
+
+---
+
 **Next steps**:
-- Add file upload in chat feature for users
 - Write comprehensive deployment documentation
 - Add session management UI (view/delete past chats)
 - Implement model assignment UI in admin panel
+- Add file upload progress indicator
 
 ---
 
@@ -721,12 +771,12 @@ NEXTAUTH_URL=http://localhost:3000
 - **Source citations with similarity scores**
 - **Admin dashboard UI (models, documents, users)**
 - **Chat interface UI with WebSocket streaming**
+- **File upload in chat for users**
 
 ### 🚧 In Progress
 - None currently
 
 ### ⏳ Pending
-- File upload in chat feature for users
 - Session management UI (view/delete past chats)
 - Model user assignment UI in admin panel
 - Testing and deployment documentation
@@ -750,11 +800,12 @@ The LLM RAG Chatbot application is now **feature-complete** for core functionali
 - Admin panel with full CRUD for models, documents, and users
 - Real-time chat interface with WebSocket streaming
 - Source citation display
+- File upload in chat (PDF, CSV, TXT)
 - Responsive design with dark mode
 
 **Ready for**:
 - Development testing with Docker Compose
-- Additional features (file upload in chat, session UI, etc.)
+- Additional features (session management UI, model assignment UI)
 - Production deployment documentation
 
 ---

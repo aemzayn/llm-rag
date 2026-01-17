@@ -24,9 +24,11 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [sessionId, setSessionId] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     checkAuth()
@@ -182,6 +184,62 @@ export default function ChatPage() {
     }
   }
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !selectedModel) return
+
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'text/csv', 'text/plain']
+    const allowedExtensions = ['.pdf', '.csv', '.txt']
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      toast.error('Only PDF, CSV, and TXT files are supported')
+      return
+    }
+
+    // Validate file size (250MB limit)
+    const maxSize = 250 * 1024 * 1024 // 250MB in bytes
+    if (file.size > maxSize) {
+      toast.error('File size must be less than 250MB')
+      return
+    }
+
+    setUploading(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('model_id', selectedModel.toString())
+
+      const response = await api.post('/api/chat/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        params: {
+          model_id: selectedModel
+        }
+      })
+
+      toast.success(response.data.message || 'File uploaded successfully')
+
+      // Add a system message to chat
+      setMessages(prev => [...prev, {
+        role: MessageRole.ASSISTANT,
+        content: `📎 File "${file.name}" uploaded and is being processed. You can start asking questions about it once processing is complete (usually takes a few seconds to a minute depending on file size).`
+      }])
+    } catch (error: any) {
+      console.error('File upload error:', error)
+      toast.error(error.response?.data?.detail || 'Failed to upload file')
+    } finally {
+      setUploading(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
@@ -252,8 +310,11 @@ export default function ChatPage() {
             <p className="text-gray-500 dark:text-gray-400 mb-4">
               Start a conversation with the AI
             </p>
-            <p className="text-sm text-gray-400 dark:text-gray-500">
+            <p className="text-sm text-gray-400 dark:text-gray-500 mb-2">
               Ask questions about your documents
+            </p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              💡 Tip: Use the 📎 button to upload files (PDF, CSV, TXT) and ask questions about them
             </p>
           </div>
         ) : (
@@ -311,6 +372,23 @@ export default function ChatPage() {
       <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
         <div className="max-w-4xl mx-auto">
           <div className="flex gap-3">
+            {/* File Upload Button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.csv,.txt"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={models.length === 0 || uploading || sending}
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              title="Upload a file (PDF, CSV, or TXT)"
+            >
+              {uploading ? '⏳' : '📎'}
+            </button>
+
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -328,9 +406,16 @@ export default function ChatPage() {
               {sending ? '...' : 'Send'}
             </button>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            Press Enter to send, Shift+Enter for new line
-          </p>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Press Enter to send, Shift+Enter for new line
+            </p>
+            {uploading && (
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                Uploading file...
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, WebSocket, Depends, HTTPException, status, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, Depends, HTTPException, status, WebSocketDisconnect, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
@@ -15,6 +15,8 @@ from app.schemas.chat import (
 from app.services.rag_service import RAGService
 from app.services.llm_service import LLMService
 from app.services import model_service
+from app.services.document_service import DocumentProcessor
+from app.workers.tasks import process_document_task
 import json
 import logging
 
@@ -323,3 +325,66 @@ async def delete_session(
     db.delete(session)
     db.commit()
     return None
+
+
+@router.post("/upload")
+async def upload_file_in_chat(
+    file: UploadFile = File(...),
+    model_id: int = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload a file during chat for immediate processing
+    This allows users to upload documents on the fly and ask questions about them
+    """
+    if not model_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="model_id is required"
+        )
+
+    # Verify model access
+    model = model_service.get_model(db, model_id)
+    if not model:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Model not found"
+        )
+
+    if not model_service.check_user_access(db, model_id, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this model"
+        )
+
+    # Validate file type
+    allowed_types = ['application/pdf', 'text/csv', 'text/plain']
+    if file.content_type not in allowed_types and not file.filename.endswith(('.pdf', '.csv', '.txt')):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF, CSV, and TXT files are supported"
+        )
+
+    # Process document upload
+    try:
+        processor = DocumentProcessor(db)
+        document = await processor.save_upload(file, model_id, current_user.id)
+
+        # Queue processing task
+        process_document_task.delay(document.id)
+
+        logger.info(f"User {current_user.id} uploaded file {file.filename} to model {model_id} in chat")
+
+        return {
+            "document_id": document.id,
+            "filename": document.filename,
+            "status": "processing",
+            "message": "File uploaded successfully and is being processed. You can start asking questions once processing is complete."
+        }
+    except Exception as e:
+        logger.error(f"File upload error in chat: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload file: {str(e)}"
+        )

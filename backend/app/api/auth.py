@@ -1,31 +1,124 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+from app.core.security import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    create_refresh_token,
+    decode_token
+)
+from app.core.dependencies import get_current_user
+from app.models.user import User, UserRole
+from app.schemas.user import UserCreate, UserLogin, Token, UserResponse
 
 router = APIRouter()
 
 
-@router.post("/signup")
-async def signup():
+@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     """User signup endpoint"""
-    # To be implemented
-    return {"message": "Signup endpoint - to be implemented"}
+    # Check if user already exists
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    # Create new user
+    new_user = User(
+        email=user_data.email,
+        hashed_password=get_password_hash(user_data.password),
+        full_name=user_data.full_name,
+        role=UserRole.USER,  # Default role
+        is_active=True
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
 
 
-@router.post("/login")
-async def login():
+@router.post("/login", response_model=Token)
+async def login(user_data: UserLogin, db: Session = Depends(get_db)):
     """User login endpoint"""
-    # To be implemented
-    return {"message": "Login endpoint - to be implemented"}
+    # Find user by email
+    user = db.query(User).filter(User.email == user_data.email).first()
+
+    # Verify credentials
+    if not user or not verify_password(user_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+
+    # Create tokens
+    access_token = create_access_token(data={"sub": user.id, "email": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.id, "email": user.email})
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
 
 
-@router.post("/refresh")
-async def refresh_token():
-    """Refresh token endpoint"""
-    # To be implemented
-    return {"message": "Refresh token endpoint - to be implemented"}
+@router.post("/refresh", response_model=Token)
+async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
+    """Refresh access token using refresh token"""
+    payload = decode_token(refresh_token)
+
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token"
+        )
+
+    # Check token type
+    if payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type"
+        )
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload"
+        )
+
+    # Verify user exists and is active
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive"
+        )
+
+    # Create new tokens
+    new_access_token = create_access_token(data={"sub": user.id, "email": user.email})
+    new_refresh_token = create_refresh_token(data={"sub": user.id, "email": user.email})
+
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer"
+    }
 
 
-@router.get("/me")
-async def get_current_user():
-    """Get current user endpoint"""
-    # To be implemented
-    return {"message": "Get current user endpoint - to be implemented"}
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """Get current user information"""
+    return current_user

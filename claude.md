@@ -637,6 +637,36 @@ Assistant Answer:
 
 ---
 
+#### ✅ Task 13: Add Makefile for development
+**Status**: Completed
+
+**What was done**:
+- Created comprehensive Makefile for local development
+- Added Docker Compose management commands
+- Added database migration commands
+- Added service shell access commands
+- Added Ollama model management commands
+- Added testing and linting commands
+- Added health check and status commands
+
+**Files created**:
+- [Makefile](Makefile) - Development commands
+
+**Key commands**:
+- `make dev` - Start development environment
+- `make up` / `make down` - Start/stop services
+- `make logs` / `make logs-backend` - View logs
+- `make db-migrate msg="..."` - Create migration
+- `make db-upgrade` - Apply migrations
+- `make db-shell` - Open PostgreSQL shell
+- `make backend-shell` - Open backend bash
+- `make ollama-pull model=llama2` - Pull LLM model
+- `make status` - Show service status
+- `make health` - Check service health
+- `make quick-start` - First-time setup
+
+---
+
 **Next steps**:
 - Add session management UI (view/delete past chats)
 - Implement model assignment UI in admin panel
@@ -672,6 +702,7 @@ llm-rag/
 │   ├── package.json
 │   └── Dockerfile
 ├── docker-compose.yml      # Development environment
+├── Makefile               # Development commands
 ├── .env.example           # Environment variables template
 ├── DEPLOYMENT.md          # Deployment guide
 └── claude.md              # This file

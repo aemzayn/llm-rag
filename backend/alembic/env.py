@@ -16,6 +16,9 @@ from app.models import user, model, document, chat  # noqa
 # access to the values within the .ini file in use.
 config = context.config
 
+if settings.DATABASE_URL is None:
+    raise ValueError("DATABASE_URL is not set in the environment variables.")
+
 # Override sqlalchemy.url with environment variable
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
@@ -67,9 +70,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

@@ -1,3 +1,5 @@
+from datetime import timezone
+from fileinput import filename
 import os
 import json
 from pathlib import Path
@@ -7,7 +9,7 @@ from fastapi import UploadFile, HTTPException, status
 import aiofiles
 from pypdf import PdfReader
 import pandas as pd
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.models.document import Document, DocumentChunk, DocumentStatus
 from app.core.config import settings
 from app.services.embedding_service import generate_embeddings_batch
@@ -25,14 +27,11 @@ class DocumentProcessor:
             chunk_size=settings.CHUNK_SIZE,
             chunk_overlap=settings.CHUNK_OVERLAP,
             length_function=len,
-            separators=["\n\n", "\n", " ", ""]
+            separators=["\n\n", "\n", " ", ""],
         )
 
     async def save_upload(
-        self,
-        file: UploadFile,
-        model_id: int,
-        user_id: int
+        self, file: UploadFile, model_id: int, user_id: int
     ) -> Document:
         """Save uploaded file and create document record"""
         # Validate file size
@@ -40,19 +39,25 @@ class DocumentProcessor:
         content = await file.read()
         file_size = len(content)
 
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Filename must be provided",
+            )
+
         max_size = settings.MAX_FILE_SIZE_MB * 1024 * 1024
         if file_size > max_size:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"File size exceeds {settings.MAX_FILE_SIZE_MB}MB limit"
+                detail=f"File size exceeds {settings.MAX_FILE_SIZE_MB}MB limit",
             )
 
         # Get file extension
         file_ext = Path(file.filename).suffix.lower()
-        if file_ext not in ['.pdf', '.csv']:
+        if file_ext not in [".pdf", ".csv"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only PDF and CSV files are supported"
+                detail="Only PDF and CSV files are supported",
             )
 
         # Create document record
@@ -60,9 +65,9 @@ class DocumentProcessor:
             model_id=model_id,
             filename=file.filename,
             file_size=file_size,
-            file_type=file_ext.lstrip('.'),
+            file_type=file_ext.lstrip("."),
             status=DocumentStatus.UPLOADING,
-            uploaded_by=user_id
+            uploaded_by=user_id,
         )
         self.db.add(document)
         self.db.commit()
@@ -77,10 +82,10 @@ class DocumentProcessor:
 
             # Save file
             file_path = upload_dir / f"{document.id}_{file.filename}"
-            async with aiofiles.open(file_path, 'wb') as f:
+            async with aiofiles.open(file_path, "wb") as f:
                 await f.write(content)
 
-            document.file_path = str(file_path)
+            setattr(document, "file_path", str(file_path))
             self.db.commit()
 
         return document
@@ -93,15 +98,17 @@ class DocumentProcessor:
             for page_num, page in enumerate(reader.pages, 1):
                 text = page.extract_text()
                 if text.strip():
-                    chunks.append({
-                        'content': text,
-                        'metadata': {'page': page_num, 'source': 'pdf'}
-                    })
+                    chunks.append(
+                        {
+                            "content": text,
+                            "metadata": {"page": page_num, "source": "pdf"},
+                        }
+                    )
         except Exception as e:
             logger.error(f"Error parsing PDF: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to parse PDF: {str(e)}"
+                detail=f"Failed to parse PDF: {str(e)}",
             )
         return chunks
 
@@ -112,21 +119,26 @@ class DocumentProcessor:
             df = pd.read_csv(file_path)
 
             # Convert each row to text
-            for idx, row in df.iterrows():
+            idx = 0
+            for _, row in df.iterrows():
                 text_parts = []
                 for col, value in row.items():
                     text_parts.append(f"{col}: {value}")
                 text = " | ".join(text_parts)
 
-                chunks.append({
-                    'content': text,
-                    'metadata': {'row': int(idx) + 1, 'source': 'csv'}
-                })
+                chunks.append(
+                    {
+                        "content": text,
+                        "metadata": {"row": int(idx) + 1, "source": "csv"},
+                    }
+                )
+                idx += 1
+
         except Exception as e:
             logger.error(f"Error parsing CSV: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to parse CSV: {str(e)}"
+                detail=f"Failed to parse CSV: {str(e)}",
             )
         return chunks
 
@@ -135,45 +147,42 @@ class DocumentProcessor:
         all_chunks = []
 
         for item in text_chunks:
-            text = item['content']
-            metadata = item['metadata']
+            text = item["content"]
+            meta = item["metadata"]
 
             # Split text
             splits = self.text_splitter.split_text(text)
 
             for split in splits:
-                all_chunks.append({
-                    'content': split,
-                    'metadata': metadata
-                })
+                all_chunks.append({"content": split, "meta": meta})
 
         return all_chunks
 
     async def process_document(self, document_id: int) -> None:
         """Process document: parse, chunk, embed, and store"""
-        document = self.db.query(Document).filter(
-            Document.id == document_id
-        ).first()
+        document = self.db.query(Document).filter(Document.id == document_id).first()
 
         if not document:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Document not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
             )
 
         try:
             # Update status
-            document.status = DocumentStatus.PROCESSING
+            document.__setattr__("status", DocumentStatus.PROCESSING)
             self.db.commit()
+            file_type = document.__getattribute__("file_type")
+            file_path = document.__getattribute__("file_path")
+            if not file_path or not os.path.exists(file_path):
+                raise ValueError("Document file not found on server")
 
             # Parse document
-            if document.file_type == 'pdf':
-                parsed_chunks = self.parse_pdf(document.file_path)
-            elif document.file_type == 'csv':
-                parsed_chunks = self.parse_csv(document.file_path)
+            if file_type == "pdf":
+                parsed_chunks = self.parse_pdf(file_path)
+            elif file_type == "csv":
+                parsed_chunks = self.parse_csv(file_path)
             else:
-                raise ValueError(f"Unsupported file type: {document.file_type}")
-
+                raise ValueError(f"Unsupported file type: {file_type}")
             # Chunk text
             chunks = self.chunk_text(parsed_chunks)
 
@@ -181,7 +190,7 @@ class DocumentProcessor:
                 raise ValueError("No content extracted from document")
 
             # Generate embeddings
-            texts = [chunk['content'] for chunk in chunks]
+            texts = [chunk["content"] for chunk in chunks]
             embeddings = generate_embeddings_batch(texts)
 
             # Delete old chunks if re-embedding
@@ -194,25 +203,28 @@ class DocumentProcessor:
                 doc_chunk = DocumentChunk(
                     document_id=document_id,
                     model_id=document.model_id,
-                    content=chunk['content'],
+                    content=chunk["content"],
                     embedding=embedding,
-                    metadata=json.dumps(chunk['metadata']),
-                    chunk_index=idx
+                    metadata=json.dumps(chunk["metadata"]),
+                    chunk_index=idx,
                 )
                 self.db.add(doc_chunk)
 
             # Update document status
-            document.status = DocumentStatus.COMPLETED
+            document.__setattr__("status", DocumentStatus.COMPLETED)
             from datetime import datetime
-            document.processed_at = datetime.utcnow()
+
+            document.__setattr__("processed_at", datetime.now(timezone.utc))
             self.db.commit()
 
-            logger.info(f"Document {document_id} processed successfully: {len(chunks)} chunks")
+            logger.info(
+                f"Document {document_id} processed successfully: {len(chunks)} chunks"
+            )
 
         except Exception as e:
             logger.error(f"Error processing document {document_id}: {e}")
-            document.status = DocumentStatus.FAILED
-            document.error_message = str(e)
+            document.__setattr__("status", DocumentStatus.FAILED)
+            document.__setattr__("error_message", str(e))
             self.db.commit()
             raise
 
@@ -221,29 +233,30 @@ class DocumentProcessor:
         return self.db.query(Document).filter(Document.id == document_id).first()
 
     def get_documents_by_model(
-        self,
-        model_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, model_id: int, skip: int = 0, limit: int = 100
     ) -> List[Document]:
         """Get all documents for a model"""
-        return self.db.query(Document).filter(
-            Document.model_id == model_id
-        ).offset(skip).limit(limit).all()
+        return (
+            self.db.query(Document)
+            .filter(Document.model_id == model_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
     def delete_document(self, document_id: int) -> None:
         """Delete document and its chunks"""
         document = self.get_document(document_id)
         if not document:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Document not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
             )
 
-        # Delete file if it exists
-        if document.file_path and os.path.exists(document.file_path):
-            os.remove(document.file_path)
+        file_path = document.__getattribute__("file_path")
 
+        # Delete file if it exists
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
         # Delete document (chunks will be cascaded)
         self.db.delete(document)
         self.db.commit()

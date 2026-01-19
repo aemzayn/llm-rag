@@ -11,11 +11,13 @@ security = HTTPBearer()
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> User:
     """Get current authenticated user from JWT token"""
     token = credentials.credentials
     payload = decode_token(token)
+
+    print(f"Decoded payload: {payload}")  # Debugging line
 
     if not payload:
         raise HTTPException(
@@ -46,7 +48,7 @@ def get_current_user(
             detail="User not found",
         )
 
-    if not user.is_active:
+    if not user.__getattribute__("is_active"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive",
@@ -55,37 +57,29 @@ def get_current_user(
     return user
 
 
-def get_current_active_user(
-    current_user: User = Depends(get_current_user)
-) -> User:
+def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """Get current active user"""
-    if not current_user.is_active:
+    if not current_user.__getattribute__("is_active"):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
         )
     return current_user
 
 
-def require_admin(
-    current_user: User = Depends(get_current_user)
-) -> User:
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
     """Require admin or superadmin role"""
     if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin privileges required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
         )
     return current_user
 
 
-def require_superadmin(
-    current_user: User = Depends(get_current_user)
-) -> User:
+def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
     """Require superadmin role"""
-    if current_user.role != UserRole.SUPERADMIN:
+    if current_user.__getattribute__("role") != UserRole.SUPERADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Superadmin privileges required"
+            detail="Superadmin privileges required",
         )
     return current_user

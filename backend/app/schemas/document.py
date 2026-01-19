@@ -6,6 +6,7 @@ from app.models.document import DocumentStatus
 
 class DocumentBase(BaseModel):
     """Base document schema"""
+
     filename: str
     file_size: int
     file_type: str
@@ -13,6 +14,7 @@ class DocumentBase(BaseModel):
 
 class DocumentResponse(DocumentBase):
     """Schema for document response"""
+
     id: int
     model_id: int
     status: DocumentStatus
@@ -27,6 +29,7 @@ class DocumentResponse(DocumentBase):
 
 class DocumentUploadResponse(BaseModel):
     """Schema for document upload response"""
+
     document_id: int
     filename: str
     status: str
@@ -35,6 +38,7 @@ class DocumentUploadResponse(BaseModel):
 
 class DocumentChunkResponse(BaseModel):
     """Schema for document chunk response"""
+
     id: int
     document_id: int
     content: str

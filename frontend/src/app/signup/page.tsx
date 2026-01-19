@@ -26,10 +26,10 @@ export default function SignupPage() {
     }
 
     // Validate password length
-    if (formData.password.length < 8) {
-      toast.error('Password must be at least 8 characters')
-      return
-    }
+    // if (formData.password.length < 8) {
+    //   toast.error('Password must be at least 8 characters')
+    //   return
+    // }
 
     setLoading(true)
 
@@ -44,7 +44,8 @@ export default function SignupPage() {
       router.push('/login')
     } catch (error: any) {
       console.error('Signup error:', error)
-      toast.error(error.response?.data?.detail || 'Signup failed')
+      console.log(error.response.data)
+      // toast.error(error.response?.data?.detail || 'Signup failed')
     } finally {
       setLoading(false)
     }

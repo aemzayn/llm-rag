@@ -1,14 +1,16 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
-from app.models.model import LLMProvider
+
+# Type alias for LLM providers
+LLMProviderType = Literal["ollama", "openai", "anthropic", "custom"]
 
 
 class ModelBase(BaseModel):
     """Base model schema"""
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = None
-    llm_provider: LLMProvider
+    llm_provider: LLMProviderType
     llm_model_name: str = Field(..., min_length=1)
     api_base_url: Optional[str] = None
 
@@ -23,7 +25,7 @@ class ModelUpdate(BaseModel):
     """Schema for updating a model"""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
-    llm_provider: Optional[LLMProvider] = None
+    llm_provider: Optional[LLMProviderType] = None
     llm_model_name: Optional[str] = None
     api_key: Optional[str] = None  # Plaintext, will be encrypted
     api_base_url: Optional[str] = None

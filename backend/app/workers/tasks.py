@@ -2,7 +2,7 @@ from celery import Task
 from app.workers.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.services.document_service import DocumentProcessor
-from app.models.document import DocumentStatus
+from app.models.document import DOCUMENT_STATUS_FAILED
 import logging
 import asyncio
 
@@ -43,7 +43,7 @@ def process_document_task(self: Task, document_id: int):
         from app.models.document import Document
         document = db.query(Document).filter(Document.id == document_id).first()
         if document:
-            document.status = DocumentStatus.FAILED
+            document.status = DOCUMENT_STATUS_FAILED
             document.error_message = str(e)
             db.commit()
 

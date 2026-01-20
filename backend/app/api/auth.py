@@ -9,7 +9,7 @@ from app.core.security import (
     decode_token,
 )
 from app.core.dependencies import get_current_user
-from app.models.user import User, UserRole
+from app.models.user import User, USER_ROLE_USER
 from app.schemas.user import UserCreate, UserLogin, Token, UserResponse
 
 router = APIRouter()
@@ -36,7 +36,7 @@ async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
         email=user_data.email,
         hashed_password=hashed_password,
         full_name=user_data.full_name,
-        role=UserRole.USER.lower(),  # Default role
+        role=USER_ROLE_USER,  # Default role
         is_active=True,
     )
 

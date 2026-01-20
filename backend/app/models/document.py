@@ -5,24 +5,22 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Text,
-    Enum,
     BigInteger,
 )
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
-import enum
 from app.core.database import Base
 from app.core.config import settings
 
 
-class DocumentStatus(str, enum.Enum):
-    """Document processing status"""
+# Document status constants
+DOCUMENT_STATUS_UPLOADING = "uploading"
+DOCUMENT_STATUS_PROCESSING = "processing"
+DOCUMENT_STATUS_COMPLETED = "completed"
+DOCUMENT_STATUS_FAILED = "failed"
 
-    UPLOADING = "uploading"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
+DOCUMENT_STATUSES = [DOCUMENT_STATUS_UPLOADING, DOCUMENT_STATUS_PROCESSING, DOCUMENT_STATUS_COMPLETED, DOCUMENT_STATUS_FAILED]
 
 
 class Document(Base):
@@ -38,9 +36,7 @@ class Document(Base):
     file_path = Column(String)  # Path to original file (if KEEP_ORIGINAL_FILES=true)
     file_size = Column(BigInteger, nullable=False)  # in bytes
     file_type = Column(String, nullable=False)  # pdf, csv, etc.
-    status = Column(
-        Enum(DocumentStatus), default=DocumentStatus.UPLOADING, nullable=False
-    )
+    status = Column(String, default=DOCUMENT_STATUS_UPLOADING, nullable=False)
     error_message = Column(Text)  # Error details if status=FAILED
     uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(

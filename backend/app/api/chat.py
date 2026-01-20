@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.security import decode_token
 from app.models.user import User
-from app.models.chat import MessageRole
+from app.models.chat import MESSAGE_ROLE_USER, MESSAGE_ROLE_ASSISTANT
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
@@ -60,7 +60,7 @@ async def chat(
     user_message = rag_service.save_message(
         session_id=session.id,
         user_id=current_user.id,
-        role=MessageRole.USER,
+        role=MESSAGE_ROLE_USER,
         content=request.message
     )
 
@@ -77,7 +77,7 @@ async def chat(
     # Get chat history for context
     history = rag_service.get_chat_history(session.id, limit=10)
     history_list = [
-        {"role": msg.role.value, "content": msg.content}
+        {"role": msg.role, "content": msg.content}
         for msg in reversed(history[1:])  # Exclude current message
     ]
 
@@ -106,7 +106,7 @@ async def chat(
     assistant_message = rag_service.save_message(
         session_id=session.id,
         user_id=current_user.id,
-        role=MessageRole.ASSISTANT,
+        role=MESSAGE_ROLE_ASSISTANT,
         content=response_text,
         sources=sources
     )
@@ -179,7 +179,7 @@ async def chat_websocket(websocket: WebSocket, token: str, db: Session = Depends
             user_message = rag_service.save_message(
                 session_id=session.id,
                 user_id=user.id,
-                role=MessageRole.USER,
+                role=MESSAGE_ROLE_USER,
                 content=message
             )
 
@@ -209,7 +209,7 @@ async def chat_websocket(websocket: WebSocket, token: str, db: Session = Depends
             context = rag_service.build_context(relevant_chunks)
             history = rag_service.get_chat_history(session.id, limit=10)
             history_list = [
-                {"role": msg.role.value, "content": msg.content}
+                {"role": msg.role, "content": msg.content}
                 for msg in reversed(history[1:])
             ]
 
@@ -245,7 +245,7 @@ async def chat_websocket(websocket: WebSocket, token: str, db: Session = Depends
             assistant_message = rag_service.save_message(
                 session_id=session.id,
                 user_id=user.id,
-                role=MessageRole.ASSISTANT,
+                role=MESSAGE_ROLE_ASSISTANT,
                 content=response_text,
                 sources=sources if relevant_chunks else None
             )

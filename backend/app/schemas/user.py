@@ -1,7 +1,9 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
-from app.models.user import UserRole
+
+# Type alias for user roles
+UserRoleType = Literal["superadmin", "admin", "user"]
 
 
 class UserBase(BaseModel):
@@ -21,7 +23,7 @@ class UserUpdate(BaseModel):
     """Schema for updating a user"""
 
     full_name: Optional[str] = None
-    role: Optional[UserRole] = None
+    role: Optional[UserRoleType] = None
     is_active: Optional[bool] = None
 
 
@@ -29,7 +31,7 @@ class UserResponse(UserBase):
     """Schema for user response"""
 
     id: int
-    role: UserRole
+    role: str
     is_active: bool
     created_at: datetime
 

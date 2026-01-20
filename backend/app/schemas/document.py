@@ -1,7 +1,9 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
-from app.models.document import DocumentStatus
+
+# Type alias for document status
+DocumentStatusType = Literal["uploading", "processing", "completed", "failed"]
 
 
 class DocumentBase(BaseModel):
@@ -17,7 +19,7 @@ class DocumentResponse(DocumentBase):
 
     id: int
     model_id: int
-    status: DocumentStatus
+    status: str
     error_message: Optional[str] = None
     uploaded_by: int
     created_at: datetime

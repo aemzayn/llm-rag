@@ -1,16 +1,16 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Enum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-import enum
 from app.core.database import Base
 
 
-class LLMProvider(str, enum.Enum):
-    """LLM Provider enum"""
-    OLLAMA = "ollama"
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-    CUSTOM = "custom"
+# LLM provider constants
+LLM_PROVIDER_OLLAMA = "ollama"
+LLM_PROVIDER_OPENAI = "openai"
+LLM_PROVIDER_ANTHROPIC = "anthropic"
+LLM_PROVIDER_CUSTOM = "custom"
+
+LLM_PROVIDERS = [LLM_PROVIDER_OLLAMA, LLM_PROVIDER_OPENAI, LLM_PROVIDER_ANTHROPIC, LLM_PROVIDER_CUSTOM]
 
 
 class Model(Base):
@@ -20,7 +20,7 @@ class Model(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(Text)
-    llm_provider = Column(Enum(LLMProvider), default=LLMProvider.OLLAMA, nullable=False)
+    llm_provider = Column(String, default=LLM_PROVIDER_OLLAMA, nullable=False)
     llm_model_name = Column(String, nullable=False)  # e.g., "llama2", "gpt-4", "claude-3-opus"
     api_key_encrypted = Column(Text)  # Encrypted API key for external providers
     api_base_url = Column(String)  # Custom base URL for API providers

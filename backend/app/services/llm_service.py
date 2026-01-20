@@ -1,5 +1,10 @@
 from typing import Optional, AsyncGenerator
-from app.models.model import Model, LLMProvider
+from app.models.model import (
+    Model,
+    LLM_PROVIDER_OLLAMA,
+    LLM_PROVIDER_OPENAI,
+    LLM_PROVIDER_ANTHROPIC,
+)
 from app.core.security import api_key_encryption
 from app.core.config import settings
 import httpx
@@ -26,24 +31,24 @@ class LLMService:
 
     async def generate_response(self, prompt: str) -> str:
         """Generate a non-streaming response from the LLM"""
-        if self.provider == LLMProvider.OLLAMA:
+        if self.provider == LLM_PROVIDER_OLLAMA:
             return await self._generate_ollama(prompt)
-        elif self.provider == LLMProvider.OPENAI:
+        elif self.provider == LLM_PROVIDER_OPENAI:
             return await self._generate_openai(prompt)
-        elif self.provider == LLMProvider.ANTHROPIC:
+        elif self.provider == LLM_PROVIDER_ANTHROPIC:
             return await self._generate_anthropic(prompt)
         else:
             return await self._generate_custom(prompt)
 
     async def generate_stream(self, prompt: str) -> AsyncGenerator[str, None]:
         """Generate a streaming response from the LLM"""
-        if self.provider == LLMProvider.OLLAMA:
+        if self.provider == LLM_PROVIDER_OLLAMA:
             async for chunk in self._stream_ollama(prompt):
                 yield chunk
-        elif self.provider == LLMProvider.OPENAI:
+        elif self.provider == LLM_PROVIDER_OPENAI:
             async for chunk in self._stream_openai(prompt):
                 yield chunk
-        elif self.provider == LLMProvider.ANTHROPIC:
+        elif self.provider == LLM_PROVIDER_ANTHROPIC:
             async for chunk in self._stream_anthropic(prompt):
                 yield chunk
         else:

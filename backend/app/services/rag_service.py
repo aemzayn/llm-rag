@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List, Dict, Optional
 from app.models.document import DocumentChunk, Document
-from app.models.chat import ChatSession, ChatMessage, MessageRole
+from app.models.chat import ChatSession, ChatMessage, MESSAGE_ROLES
 from app.services.embedding_service import generate_embedding
 from app.core.config import settings
 import json
@@ -22,7 +22,7 @@ class RAGService:
         query: str,
         model_id: int,
         top_k: int = 5,
-        similarity_threshold: float = 0.3
+        similarity_threshold: float = 0.3,
     ) -> List[Dict]:
         """
         Search for similar document chunks using vector similarity
@@ -41,7 +41,8 @@ class RAGService:
 
         # Use pgvector's cosine distance operator (<=>)
         # Lower distance = more similar
-        sql = text("""
+        sql = text(
+            """
             SELECT
                 dc.id,
                 dc.content,
@@ -54,15 +55,16 @@ class RAGService:
             WHERE dc.model_id = :model_id
             ORDER BY dc.embedding <=> :query_embedding
             LIMIT :top_k
-        """)
+        """
+        )
 
         result = self.db.execute(
             sql,
             {
                 "query_embedding": str(query_embedding),
                 "model_id": model_id,
-                "top_k": top_k
-            }
+                "top_k": top_k,
+            },
         )
 
         chunks = []
@@ -70,16 +72,20 @@ class RAGService:
             similarity = float(row.similarity)
             if similarity >= similarity_threshold:
                 metadata = json.loads(row.metadata) if row.metadata else {}
-                chunks.append({
-                    "chunk_id": row.id,
-                    "content": row.content,
-                    "document_id": row.document_id,
-                    "document_name": row.filename,
-                    "similarity": similarity,
-                    "metadata": metadata
-                })
+                chunks.append(
+                    {
+                        "chunk_id": row.id,
+                        "content": row.content,
+                        "document_id": row.document_id,
+                        "document_name": row.filename,
+                        "similarity": similarity,
+                        "metadata": metadata,
+                    }
+                )
 
-        logger.info(f"Found {len(chunks)} relevant chunks for query in model {model_id}")
+        logger.info(
+            f"Found {len(chunks)} relevant chunks for query in model {model_id}"
+        )
         return chunks
 
     def build_context(self, chunks: List[Dict]) -> str:
@@ -101,10 +107,7 @@ class RAGService:
         return "\n\n".join(context_parts)
 
     def build_prompt(
-        self,
-        query: str,
-        context: str,
-        chat_history: Optional[List[Dict]] = None
+        self, query: str, context: str, chat_history: Optional[List[Dict]] = None
     ) -> str:
         """Build the full prompt for the LLM"""
         prompt_parts = [
@@ -112,7 +115,7 @@ class RAGService:
             "",
             "Context from knowledge base:",
             context,
-            ""
+            "",
         ]
 
         # Add chat history if available
@@ -123,17 +126,19 @@ class RAGService:
                 prompt_parts.append(f"{role}: {msg['content']}")
             prompt_parts.append("")
 
-        prompt_parts.extend([
-            "Instructions:",
-            "1. Answer the question using ONLY the information from the provided context",
-            "2. If the context doesn't contain relevant information, say so honestly",
-            "3. Include specific references to sources when possible",
-            "4. Be concise and accurate",
-            "",
-            f"User Question: {query}",
-            "",
-            "Assistant Answer:"
-        ])
+        prompt_parts.extend(
+            [
+                "Instructions:",
+                "1. Answer the question using ONLY the information from the provided context",
+                "2. If the context doesn't contain relevant information, say so honestly",
+                "3. Include specific references to sources when possible",
+                "4. Be concise and accurate",
+                "",
+                f"User Question: {query}",
+                "",
+                "Assistant Answer:",
+            ]
+        )
 
         return "\n".join(prompt_parts)
 
@@ -142,24 +147,26 @@ class RAGService:
         user_id: int,
         model_id: int,
         session_id: Optional[int] = None,
-        title: Optional[str] = None
+        title: Optional[str] = None,
     ) -> ChatSession:
         """Get existing session or create a new one"""
         if session_id:
-            session = self.db.query(ChatSession).filter(
-                ChatSession.id == session_id,
-                ChatSession.user_id == user_id,
-                ChatSession.model_id == model_id
-            ).first()
+            session = (
+                self.db.query(ChatSession)
+                .filter(
+                    ChatSession.id == session_id,
+                    ChatSession.user_id == user_id,
+                    ChatSession.model_id == model_id,
+                )
+                .first()
+            )
 
             if session:
                 return session
 
         # Create new session
         session = ChatSession(
-            user_id=user_id,
-            model_id=model_id,
-            title=title or "New Chat"
+            user_id=user_id, model_id=model_id, title=title or "New Chat"
         )
         self.db.add(session)
         self.db.commit()
@@ -171,9 +178,9 @@ class RAGService:
         self,
         session_id: int,
         user_id: int,
-        role: MessageRole,
+        role: str,
         content: str,
-        sources: Optional[List[Dict]] = None
+        sources: Optional[List[Dict]] = None,
     ) -> ChatMessage:
         """Save a chat message"""
         message = ChatMessage(
@@ -181,7 +188,7 @@ class RAGService:
             user_id=user_id,
             role=role,
             content=content,
-            sources=sources
+            sources=sources,
         )
         self.db.add(message)
         self.db.commit()
@@ -189,26 +196,21 @@ class RAGService:
 
         return message
 
-    def get_chat_history(
-        self,
-        session_id: int,
-        limit: int = 10
-    ) -> List[ChatMessage]:
+    def get_chat_history(self, session_id: int, limit: int = 10) -> List[ChatMessage]:
         """Get chat history for a session"""
-        return self.db.query(ChatMessage).filter(
-            ChatMessage.session_id == session_id
-        ).order_by(ChatMessage.created_at.desc()).limit(limit).all()
+        return (
+            self.db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.desc())
+            .limit(limit)
+            .all()
+        )
 
     def get_user_sessions(
-        self,
-        user_id: int,
-        model_id: Optional[int] = None,
-        limit: int = 50
+        self, user_id: int, model_id: Optional[int] = None, limit: int = 50
     ) -> List[ChatSession]:
         """Get user's chat sessions"""
-        query = self.db.query(ChatSession).filter(
-            ChatSession.user_id == user_id
-        )
+        query = self.db.query(ChatSession).filter(ChatSession.user_id == user_id)
 
         if model_id:
             query = query.filter(ChatSession.model_id == model_id)
@@ -219,11 +221,17 @@ class RAGService:
         """Format retrieved chunks as source citations"""
         sources = []
         for chunk in chunks:
-            sources.append({
-                "document_id": chunk["document_id"],
-                "document_name": chunk["document_name"],
-                "chunk_content": chunk["content"][:200] + "..." if len(chunk["content"]) > 200 else chunk["content"],
-                "page": chunk["metadata"].get("page"),
-                "similarity_score": round(chunk["similarity"], 3)
-            })
+            sources.append(
+                {
+                    "document_id": chunk["document_id"],
+                    "document_name": chunk["document_name"],
+                    "chunk_content": (
+                        chunk["content"][:200] + "..."
+                        if len(chunk["content"]) > 200
+                        else chunk["content"]
+                    ),
+                    "page": chunk["metadata"].get("page"),
+                    "similarity_score": round(chunk["similarity"], 3),
+                }
+            )
         return sources

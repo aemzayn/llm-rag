@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.core.database import get_db
 from app.core.security import decode_token
-from app.models.user import User, UserRole
+from app.models.user import User, USER_ROLE_ADMIN, USER_ROLE_SUPERADMIN
 
 security = HTTPBearer()
 
@@ -68,7 +68,7 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
     """Require admin or superadmin role"""
-    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+    if current_user.role not in [USER_ROLE_ADMIN, USER_ROLE_SUPERADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
         )
@@ -77,7 +77,7 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
     """Require superadmin role"""
-    if current_user.__getattribute__("role") != UserRole.SUPERADMIN:
+    if current_user.__getattribute__("role") != USER_ROLE_SUPERADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Superadmin privileges required",

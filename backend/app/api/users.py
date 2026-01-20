@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
 from app.core.dependencies import require_admin, get_current_user
-from app.models.user import User, UserRole
+from app.models.user import User, USER_ROLE_ADMIN, USER_ROLE_SUPERADMIN
 from app.schemas.user import UserResponse, UserUpdate
 
 router = APIRouter()
@@ -29,7 +29,7 @@ async def get_user(
 ):
     """Get user by ID"""
     # Users can only view their own profile unless they're admin
-    if current_user.id != user_id and current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+    if current_user.id != user_id and current_user.role not in [USER_ROLE_ADMIN, USER_ROLE_SUPERADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to view this user"
@@ -61,8 +61,8 @@ async def update_user(
         )
 
     # Prevent demoting superadmin
-    if user.role == UserRole.SUPERADMIN and user_update.role != UserRole.SUPERADMIN:
-        if current_user.role != UserRole.SUPERADMIN:
+    if user.role == USER_ROLE_SUPERADMIN and user_update.role != USER_ROLE_SUPERADMIN:
+        if current_user.role != USER_ROLE_SUPERADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only superadmin can modify superadmin role"
@@ -73,8 +73,8 @@ async def update_user(
         user.full_name = user_update.full_name
     if user_update.role is not None:
         # Only superadmin can promote to admin or superadmin
-        if user_update.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
-            if current_user.role != UserRole.SUPERADMIN:
+        if user_update.role in [USER_ROLE_ADMIN, USER_ROLE_SUPERADMIN]:
+            if current_user.role != USER_ROLE_SUPERADMIN:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Only superadmin can promote users to admin or superadmin"
@@ -103,7 +103,7 @@ async def delete_user(
         )
 
     # Prevent deleting superadmin
-    if user.role == UserRole.SUPERADMIN:
+    if user.role == USER_ROLE_SUPERADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot delete superadmin user"

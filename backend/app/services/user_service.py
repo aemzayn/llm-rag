@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.core.security import get_password_hash
 from app.core.config import settings
-from app.models.user import User, UserRole
+from app.models.user import User, USER_ROLE_SUPERADMIN
 import logging
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ def create_superadmin():
                 email=settings.SUPERADMIN_EMAIL,
                 hashed_password=get_password_hash(settings.SUPERADMIN_PASSWORD),
                 full_name=settings.SUPERADMIN_NAME,
-                role=UserRole.SUPERADMIN,
+                role=USER_ROLE_SUPERADMIN,
                 is_active=True
             )
             db.add(superadmin)

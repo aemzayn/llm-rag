@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.models.model import Model, ModelUserAccess
-from app.models.user import User, UserRole
+from app.models.user import User, USER_ROLE_ADMIN, USER_ROLE_SUPERADMIN
 from app.schemas.model import ModelCreate, ModelUpdate
 from app.core.security import api_key_encryption
 from fastapi import HTTPException, status
@@ -51,7 +51,7 @@ def get_models(
     query = db.query(Model)
 
     # If user is not admin, filter by access
-    if user and user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+    if user and user.role not in [USER_ROLE_ADMIN, USER_ROLE_SUPERADMIN]:
         query = query.join(ModelUserAccess).filter(
             ModelUserAccess.user_id == user.id
         )
@@ -142,7 +142,7 @@ def assign_users_to_model(
 def check_user_access(db: Session, model_id: int, user: User) -> bool:
     """Check if user has access to a model"""
     # Admins have access to all models
-    if user.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+    if user.role in [USER_ROLE_ADMIN, USER_ROLE_SUPERADMIN]:
         return True
 
     # Check if user has explicit access

@@ -1,7 +1,9 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
-from app.models.chat import MessageRole
+
+# Type alias for message roles
+MessageRoleType = Literal["user", "assistant", "system"]
 
 
 class ChatMessageSource(BaseModel):
@@ -23,7 +25,7 @@ class ChatMessageResponse(BaseModel):
     id: int
     session_id: int
     user_id: int
-    role: MessageRole
+    role: str
     content: str
     sources: Optional[List[ChatMessageSource]] = None
     created_at: datetime

@@ -10,7 +10,14 @@ import aiofiles
 from pypdf import PdfReader
 import pandas as pd
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from app.models.document import Document, DocumentChunk, DocumentStatus
+from app.models.document import (
+    Document,
+    DocumentChunk,
+    DOCUMENT_STATUS_UPLOADING,
+    DOCUMENT_STATUS_PROCESSING,
+    DOCUMENT_STATUS_COMPLETED,
+    DOCUMENT_STATUS_FAILED,
+)
 from app.core.config import settings
 from app.services.embedding_service import generate_embeddings_batch
 import logging
@@ -66,7 +73,7 @@ class DocumentProcessor:
             filename=file.filename,
             file_size=file_size,
             file_type=file_ext.lstrip("."),
-            status=DocumentStatus.UPLOADING,
+            status=DOCUMENT_STATUS_UPLOADING,
             uploaded_by=user_id,
         )
         self.db.add(document)
@@ -169,7 +176,7 @@ class DocumentProcessor:
 
         try:
             # Update status
-            document.__setattr__("status", DocumentStatus.PROCESSING)
+            document.__setattr__("status", DOCUMENT_STATUS_PROCESSING)
             self.db.commit()
             file_type = document.__getattribute__("file_type")
             file_path = document.__getattribute__("file_path")
@@ -211,7 +218,7 @@ class DocumentProcessor:
                 self.db.add(doc_chunk)
 
             # Update document status
-            document.__setattr__("status", DocumentStatus.COMPLETED)
+            document.__setattr__("status", DOCUMENT_STATUS_COMPLETED)
             from datetime import datetime
 
             document.__setattr__("processed_at", datetime.now(timezone.utc))
@@ -223,7 +230,7 @@ class DocumentProcessor:
 
         except Exception as e:
             logger.error(f"Error processing document {document_id}: {e}")
-            document.__setattr__("status", DocumentStatus.FAILED)
+            document.__setattr__("status", DOCUMENT_STATUS_FAILED)
             document.__setattr__("error_message", str(e))
             self.db.commit()
             raise

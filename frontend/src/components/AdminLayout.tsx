@@ -6,6 +6,11 @@ import Link from 'next/link'
 import api from '@/lib/api'
 import { User, UserRole } from '@/types'
 import toast from 'react-hot-toast'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
+import { LayoutDashboard, Bot, FileText, Users, LogOut, ChevronLeft } from 'lucide-react'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -48,75 +53,70 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const navigation = [
-    { name: 'Dashboard', href: '/admin', icon: '📊' },
-    { name: 'Models', href: '/admin/models', icon: '🤖' },
-    { name: 'Documents', href: '/admin/documents', icon: '📄' },
-    { name: 'Users', href: '/admin/users', icon: '👥' },
+    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { name: 'Models', href: '/admin/models', icon: Bot },
+    { name: 'Documents', href: '/admin/documents', icon: FileText },
+    { name: 'Users', href: '/admin/users', icon: Users },
   ]
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen">
       {/* Top Navigation */}
-      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <Link href="/admin" className="flex items-center">
-                <span className="text-xl font-bold text-gray-900 dark:text-white">
-                  LLM RAG Admin
-                </span>
+      <header className="border-b sticky top-0 z-50 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center h-14">
+            <div className="flex items-center gap-4">
+              <Link href="/admin" className="font-semibold">
+                LLM RAG Admin
               </Link>
             </div>
 
             <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-              >
-                User View
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm">
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  User View
+                </Button>
               </Link>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {user?.full_name} ({user?.role})
+              <span className="text-sm text-muted-foreground">
+                {user?.full_name}
               </span>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700"
-              >
-                Logout
-              </button>
+              <Badge variant="secondary">{user?.role}</Badge>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
-      </nav>
+      </header>
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 bg-white dark:bg-gray-800 min-h-screen border-r border-gray-200 dark:border-gray-700">
-          <nav className="mt-5 px-2">
+        <aside className="w-56 border-r min-h-[calc(100vh-3.5rem)] p-4 hidden md:block">
+          <nav className="space-y-1">
             {navigation.map((item) => {
               const isActive = pathname === item.href
+              const Icon = item.icon
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`
-                    group flex items-center px-3 py-2 text-sm font-medium rounded-md mb-1
-                    ${
-                      isActive
-                        ? 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }
-                  `}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
+                    isActive
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  )}
                 >
-                  <span className="mr-3 text-lg">{item.icon}</span>
+                  <Icon className="h-4 w-4" />
                   {item.name}
                 </Link>
               )
@@ -124,8 +124,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
         </aside>
 
+        {/* Mobile Navigation */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background p-2 z-50">
+          <nav className="flex justify-around">
+            {navigation.map((item) => {
+              const isActive = pathname === item.href
+              const Icon = item.icon
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex flex-col items-center gap-1 px-3 py-2 text-xs rounded-md transition-colors",
+                    isActive
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  {item.name}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+
         {/* Main Content */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-6 pb-20 md:pb-6">
           {children}
         </main>
       </div>

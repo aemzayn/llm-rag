@@ -1,26 +1,45 @@
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-center font-mono text-sm">
-        <h1 className="text-4xl font-bold text-center mb-4">
-          LLM RAG Chatbot
-        </h1>
-        <p className="text-center text-gray-600 dark:text-gray-400 mb-8">
-          AI-powered chatbot with document embedding capabilities
-        </p>
-        <div className="flex gap-4 justify-center">
-          <a
-            href="/login"
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            Login
-          </a>
-          <a
-            href="/signup"
-            className="px-6 py-3 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-          >
-            Sign Up
-          </a>
+    <main className="flex min-h-screen flex-col items-center justify-center p-8">
+      <div className="max-w-2xl w-full text-center space-y-8">
+        <div className="space-y-4">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
+            LLM RAG Chatbot
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-md mx-auto">
+            AI-powered chatbot with document embedding capabilities. Upload your documents and chat with AI.
+          </p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button asChild size="lg">
+            <Link href="/login">
+              Login
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="lg">
+            <Link href="/signup">
+              Sign Up
+            </Link>
+          </Button>
+        </div>
+
+        <div className="pt-8 flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            Document Upload
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            RAG Chat
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            Multiple LLMs
+          </div>
         </div>
       </div>
     </main>

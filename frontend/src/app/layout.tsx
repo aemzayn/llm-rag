@@ -1,9 +1,6 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'LLM RAG Chatbot',
@@ -16,10 +13,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="dark">
+      <body className="font-sans antialiased">
         {children}
-        <Toaster position="top-right" />
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            className: '',
+            style: {
+              background: 'hsl(0 0% 14.9%)',
+              color: 'hsl(0 0% 98%)',
+              border: '1px solid hsl(0 0% 14.9%)',
+            },
+          }}
+        />
       </body>
     </html>
   )

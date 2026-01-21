@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import api from '@/lib/api'
 import { User, UserRole } from '@/types'
 import toast from 'react-hot-toast'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { MessageSquare, Settings, User as UserIcon, LogOut } from 'lucide-react'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -39,96 +45,112 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            LLM RAG Chatbot
-          </h1>
+      <header className="border-b">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-xl font-semibold">LLM RAG Chatbot</h1>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {user?.full_name} ({user?.role})
+            <span className="text-sm text-muted-foreground">
+              {user?.full_name}
             </span>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-            >
-              Logout
-            </button>
+            <Badge variant="secondary">{user?.role}</Badge>
+            <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-            Welcome to your Dashboard
-          </h2>
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div>
+            <h2 className="text-2xl font-bold mb-2">Welcome back, {user?.full_name}</h2>
+            <p className="text-muted-foreground">What would you like to do today?</p>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Chat Card */}
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition">
-              <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Chat</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Chat with your AI models
-              </p>
-              <a
-                href="/chat"
-                className="block w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-center"
-              >
-                Start Chat
-              </a>
-            </div>
+            <Card className="hover:border-primary/50 transition-colors">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  <CardTitle>Chat</CardTitle>
+                </div>
+                <CardDescription>
+                  Chat with your AI models and documents
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild className="w-full">
+                  <Link href="/chat">Start Chat</Link>
+                </Button>
+              </CardContent>
+            </Card>
 
             {/* Admin Panel Card (Admin only) */}
             {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPERADMIN) && (
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition">
-                <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Admin Panel</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Manage models, documents, and users
-                </p>
-                <a
-                  href="/admin"
-                  className="block w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-center"
-                >
-                  Go to Admin
-                </a>
-              </div>
+              <Card className="hover:border-primary/50 transition-colors">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    <CardTitle>Admin Panel</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Manage models, documents, and users
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild variant="secondary" className="w-full">
+                    <Link href="/admin">Go to Admin</Link>
+                  </Button>
+                </CardContent>
+              </Card>
             )}
           </div>
 
-          {/* User Info */}
-          <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Your Profile</h3>
-            <dl className="grid grid-cols-1 gap-2 text-sm">
-              <div>
-                <dt className="text-gray-600 dark:text-gray-400">Email:</dt>
-                <dd className="text-gray-900 dark:text-white">{user?.email}</dd>
+          <Separator />
+
+          {/* Profile Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <UserIcon className="h-5 w-5" />
+                <CardTitle>Your Profile</CardTitle>
               </div>
-              <div>
-                <dt className="text-gray-600 dark:text-gray-400">Name:</dt>
-                <dd className="text-gray-900 dark:text-white">{user?.full_name}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-600 dark:text-gray-400">Role:</dt>
-                <dd className="text-gray-900 dark:text-white capitalize">{user?.role}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-600 dark:text-gray-400">Status:</dt>
-                <dd className="text-gray-900 dark:text-white">
-                  {user?.is_active ? 'Active' : 'Inactive'}
-                </dd>
-              </div>
-            </dl>
-          </div>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">Email</dt>
+                  <dd className="font-medium">{user?.email}</dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">Name</dt>
+                  <dd className="font-medium">{user?.full_name}</dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">Role</dt>
+                  <dd><Badge variant="outline">{user?.role}</Badge></dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">Status</dt>
+                  <dd>
+                    <Badge variant={user?.is_active ? "default" : "destructive"}>
+                      {user?.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>

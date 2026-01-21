@@ -5,19 +5,42 @@ import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
 import { Model, LLMProvider } from '@/types'
 import toast from 'react-hot-toast'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Plus, FileText, Trash2, Pencil } from 'lucide-react'
+
+interface ModelFormData {
+  name: string
+  description: string
+  llm_provider: LLMProvider
+  llm_model_name: string
+  api_key: string
+  api_base_url: string
+}
+
+const initialFormData: ModelFormData = {
+  name: '',
+  description: '',
+  llm_provider: LLMProvider.OLLAMA,
+  llm_model_name: 'llama2',
+  api_key: '',
+  api_base_url: '',
+}
 
 export default function ModelsPage() {
   const [models, setModels] = useState<Model[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    llm_provider: LLMProvider.OLLAMA,
-    llm_model_name: 'llama2',
-    api_key: '',
-    api_base_url: '',
-  })
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingModel, setEditingModel] = useState<Model | null>(null)
+  const [formData, setFormData] = useState<ModelFormData>(initialFormData)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     loadModels()
@@ -37,6 +60,7 @@ export default function ModelsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSubmitting(true)
 
     try {
       await api.post('/api/models', {
@@ -46,19 +70,55 @@ export default function ModelsPage() {
 
       toast.success('Model created successfully')
       setShowCreateModal(false)
-      setFormData({
-        name: '',
-        description: '',
-        llm_provider: LLMProvider.OLLAMA,
-        llm_model_name: 'llama2',
-        api_key: '',
-        api_base_url: '',
-      })
+      setFormData(initialFormData)
       loadModels()
     } catch (error: any) {
       console.error('Failed to create model:', error)
       toast.error(error.response?.data?.detail || 'Failed to create model')
+    } finally {
+      setSubmitting(false)
     }
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingModel) return
+    setSubmitting(true)
+
+    try {
+      await api.put(`/api/models/${editingModel.id}`, {
+        name: formData.name,
+        description: formData.description,
+        llm_provider: formData.llm_provider,
+        llm_model_name: formData.llm_model_name,
+        api_key: formData.api_key || undefined,
+        api_base_url: formData.api_base_url || undefined,
+      })
+
+      toast.success('Model updated successfully')
+      setShowEditModal(false)
+      setEditingModel(null)
+      setFormData(initialFormData)
+      loadModels()
+    } catch (error: any) {
+      console.error('Failed to update model:', error)
+      toast.error(error.response?.data?.detail || 'Failed to update model')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const openEditModal = (model: Model) => {
+    setEditingModel(model)
+    setFormData({
+      name: model.name,
+      description: model.description || '',
+      llm_provider: model.llm_provider,
+      llm_model_name: model.llm_model_name,
+      api_key: '',
+      api_base_url: '',
+    })
+    setShowEditModal(true)
   }
 
   const handleDelete = async (id: number, name: string) => {
@@ -76,208 +136,219 @@ export default function ModelsPage() {
     }
   }
 
+  const ModelForm = ({ onSubmit, submitText }: { onSubmit: (e: React.FormEvent) => void; submitText: string }) => (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Model Name *</Label>
+        <Input
+          id="name"
+          required
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="e.g., Customer Support Bot"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Brief description of this model's purpose"
+          rows={3}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>LLM Provider *</Label>
+        <Select
+          value={formData.llm_provider}
+          onValueChange={(value) => setFormData({ ...formData, llm_provider: value as LLMProvider })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={LLMProvider.OLLAMA}>Ollama (Local)</SelectItem>
+            <SelectItem value={LLMProvider.OPENAI}>OpenAI</SelectItem>
+            <SelectItem value={LLMProvider.ANTHROPIC}>Anthropic Claude</SelectItem>
+            <SelectItem value={LLMProvider.CUSTOM}>Custom</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="llm_model_name">Model Name *</Label>
+        <Input
+          id="llm_model_name"
+          required
+          value={formData.llm_model_name}
+          onChange={(e) => setFormData({ ...formData, llm_model_name: e.target.value })}
+          placeholder="e.g., llama2, gpt-4, claude-3-opus"
+        />
+      </div>
+
+      {formData.llm_provider !== LLMProvider.OLLAMA && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="api_key">API Key</Label>
+            <Input
+              id="api_key"
+              type="password"
+              value={formData.api_key}
+              onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+              placeholder="Your API key (will be encrypted)"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="api_base_url">API Base URL (optional)</Label>
+            <Input
+              id="api_base_url"
+              type="url"
+              value={formData.api_base_url}
+              onChange={(e) => setFormData({ ...formData, api_base_url: e.target.value })}
+              placeholder="https://api.openai.com/v1"
+            />
+          </div>
+        </>
+      )}
+
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setShowCreateModal(false)
+            setShowEditModal(false)
+            setEditingModel(null)
+            setFormData(initialFormData)
+          }}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting ? 'Saving...' : submitText}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+
   return (
     <AdminLayout>
-      <div>
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            AI Models
-          </h1>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            ➕ Create Model
-          </button>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">AI Models</h1>
+            <p className="text-muted-foreground mt-1">Manage your AI models and configurations</p>
+          </div>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Model
+          </Button>
         </div>
 
         {loading ? (
-          <div className="text-center py-12">Loading...</div>
+          <div className="text-center py-12 text-muted-foreground">Loading...</div>
         ) : models.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              No models created yet
-            </p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Create Your First Model
-            </button>
-          </div>
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <p className="text-muted-foreground mb-4">
+                No models created yet
+              </p>
+              <Button onClick={() => setShowCreateModal(true)}>
+                Create Your First Model
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {models.map((model) => (
-              <div
-                key={model.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {model.name}
-                  </h3>
-                  <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                    {model.llm_provider}
-                  </span>
-                </div>
-
-                {model.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    {model.description}
-                  </p>
-                )}
-
-                <div className="space-y-2 text-sm mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">Model:</span>
-                    <span className="text-gray-900 dark:text-white font-medium">
-                      {model.llm_model_name}
-                    </span>
+              <Card key={model.id} className="hover:border-primary/50 transition-colors">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg">{model.name}</CardTitle>
+                    <Badge variant="secondary">{model.llm_provider}</Badge>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">Created:</span>
-                    <span className="text-gray-900 dark:text-white">
-                      {new Date(model.created_at).toLocaleDateString()}
-                    </span>
+                  {model.description && (
+                    <CardDescription>{model.description}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-sm space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Model:</span>
+                      <span className="font-medium">{model.llm_model_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Created:</span>
+                      <span>{new Date(model.created_at).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      window.location.href = `/admin/documents?model_id=${model.id}`
-                    }}
-                    className="flex-1 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                  >
-                    📄 Documents
-                  </button>
-                  <button
-                    onClick={() => handleDelete(model.id, model.name)}
-                    className="px-3 py-2 text-sm bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800"
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => window.location.href = `/admin/documents?model_id=${model.id}`}
+                    >
+                      <FileText className="h-4 w-4 mr-1" />
+                      Documents
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditModal(model)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(model.id, model.name)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
 
         {/* Create Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full p-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Create New Model
-              </h2>
+        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Create New Model</DialogTitle>
+              <DialogDescription>
+                Configure a new AI model for your chatbot
+              </DialogDescription>
+            </DialogHeader>
+            <ModelForm onSubmit={handleCreate} submitText="Create Model" />
+          </DialogContent>
+        </Dialog>
 
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Model Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="e.g., Customer Support Bot"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    rows={3}
-                    placeholder="Brief description of this model's purpose"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    LLM Provider *
-                  </label>
-                  <select
-                    value={formData.llm_provider}
-                    onChange={(e) => setFormData({ ...formData, llm_provider: e.target.value as LLMProvider })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                    <option value={LLMProvider.OLLAMA}>Ollama (Local)</option>
-                    <option value={LLMProvider.OPENAI}>OpenAI</option>
-                    <option value={LLMProvider.ANTHROPIC}>Anthropic Claude</option>
-                    <option value={LLMProvider.CUSTOM}>Custom</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Model Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.llm_model_name}
-                    onChange={(e) => setFormData({ ...formData, llm_model_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="e.g., llama2, gpt-4, claude-3-opus"
-                  />
-                </div>
-
-                {formData.llm_provider !== LLMProvider.OLLAMA && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        API Key
-                      </label>
-                      <input
-                        type="password"
-                        value={formData.api_key}
-                        onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        placeholder="Your API key (will be encrypted)"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        API Base URL (optional)
-                      </label>
-                      <input
-                        type="url"
-                        value={formData.api_base_url}
-                        onChange={(e) => setFormData({ ...formData, api_base_url: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        placeholder="https://api.openai.com/v1"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="flex gap-3 justify-end pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Create Model
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        {/* Edit Modal */}
+        <Dialog open={showEditModal} onOpenChange={(open) => {
+          setShowEditModal(open)
+          if (!open) {
+            setEditingModel(null)
+            setFormData(initialFormData)
+          }
+        }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Model</DialogTitle>
+              <DialogDescription>
+                Update the model configuration
+              </DialogDescription>
+            </DialogHeader>
+            <ModelForm onSubmit={handleEdit} submitText="Save Changes" />
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   )

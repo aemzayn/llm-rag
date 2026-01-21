@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -35,6 +36,7 @@ export default function AdminDashboard() {
       })
     } catch (error) {
       console.error('Failed to load stats:', error)
+      toast.error('Failed to load stats')
     } finally {
       setLoading(false)
     }

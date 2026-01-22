@@ -6,14 +6,14 @@ import api from '@/lib/api'
 import { User, Model, ChatMessage as ChatMessageType, MessageRole } from '@/types'
 import toast from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
+import AppLayout from '@/components/AppLayout'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
-import { Send, Paperclip, LogOut, LayoutDashboard, Loader2, FileText } from 'lucide-react'
+import { Send, Paperclip, Loader2, FileText, Bot, Sparkles } from 'lucide-react'
 
 interface Message {
   id?: number
@@ -61,7 +61,6 @@ export default function ChatPage() {
       setUser(response.data)
     } catch (error) {
       console.error('Auth check failed:', error)
-      toast.error('Session expired. Please login again.')
       router.push('/login')
     } finally {
       setLoading(false)
@@ -238,14 +237,6 @@ export default function ChatPage() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('user')
-    toast.success('Logged out successfully')
-    router.push('/')
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -255,176 +246,175 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
-      {/* Header */}
-      <header className="border-b px-4 py-3">
-        <div className="flex items-center justify-between max-w-5xl mx-auto">
-          <div className="flex items-center gap-4">
-            <h1 className="font-semibold">Chat</h1>
-            {models.length > 0 && (
-              <Select
-                value={selectedModel?.toString() || ''}
-                onValueChange={(value) => setSelectedModel(parseInt(value))}
-              >
-                <SelectTrigger className="w-48 h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((model) => (
-                    <SelectItem key={model.id} value={model.id.toString()}>
-                      {model.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
-              <LayoutDashboard className="h-4 w-4 mr-1" />
-              Dashboard
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
-        <div className="max-w-3xl mx-auto">
-          {models.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">
-                No models available. Contact an administrator.
+    <AppLayout>
+      <div className="flex flex-col h-[calc(100vh-7rem)] lg:h-[calc(100vh-3rem)]">
+        {/* Chat Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Bot className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="font-semibold">Chat</h1>
+              <p className="text-xs text-muted-foreground">
+                {models.find(m => m.id === selectedModel)?.name || 'No model selected'}
               </p>
             </div>
-          ) : messages.length === 0 ? (
-            <div className="text-center py-20 space-y-4">
-              <h2 className="text-2xl font-semibold">Start a conversation</h2>
-              <p className="text-muted-foreground max-w-md mx-auto">
-                Ask questions about your documents. Use the paperclip icon to upload files.
-              </p>
-              <div className="flex justify-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <FileText className="h-4 w-4" />
-                  PDF
-                </div>
-                <div className="flex items-center gap-1">
-                  <FileText className="h-4 w-4" />
-                  CSV
-                </div>
-                <div className="flex items-center gap-1">
-                  <FileText className="h-4 w-4" />
-                  TXT
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4 pb-4">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.role === MessageRole.USER ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[85%] px-4 py-3 rounded-lg ${
-                      message.role === MessageRole.USER
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary'
-                    }`}
-                  >
-                    {message.role === MessageRole.ASSISTANT ? (
-                      <>
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <ReactMarkdown>{message.content || '...'}</ReactMarkdown>
-                        </div>
-                        {message.sources && message.sources.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-border">
-                            <p className="text-xs font-medium text-muted-foreground mb-2">
-                              Sources:
-                            </p>
-                            <div className="space-y-1">
-                              {message.sources.map((source, idx) => (
-                                <div key={idx} className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <FileText className="h-3 w-3" />
-                                  {source.document_name}
-                                  {source.page && ` (Page ${source.page})`}
-                                  {source.similarity_score && (
-                                    <Badge variant="outline" className="ml-1 text-xs">
-                                      {(source.similarity_score * 100).toFixed(0)}%
-                                    </Badge>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
+          </div>
+          {models.length > 0 && (
+            <Select
+              value={selectedModel?.toString() || ''}
+              onValueChange={(value) => setSelectedModel(parseInt(value))}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select model" />
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((model) => (
+                  <SelectItem key={model.id} value={model.id.toString()}>
+                    {model.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         </div>
-      </ScrollArea>
 
-      {/* Input */}
-      <div className="border-t p-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.csv,.txt"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={models.length === 0 || uploading || sending}
-            >
-              {uploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Paperclip className="h-4 w-4" />
-              )}
-            </Button>
+        {/* Messages Area */}
+        <Card className="flex-1 flex flex-col overflow-hidden">
+          <ScrollArea className="flex-1 p-4">
+            {models.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full py-12">
+                <Bot className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground text-center">
+                  No models available. Contact an administrator.
+                </p>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full py-12 space-y-6">
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="h-8 w-8 text-primary" />
+                </div>
+                <div className="text-center space-y-2">
+                  <h2 className="text-xl font-semibold">Start a conversation</h2>
+                  <p className="text-muted-foreground max-w-sm">
+                    Ask questions about your documents or chat with the AI model.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Badge variant="secondary" className="gap-1">
+                    <FileText className="h-3 w-3" /> PDF
+                  </Badge>
+                  <Badge variant="secondary" className="gap-1">
+                    <FileText className="h-3 w-3" /> CSV
+                  </Badge>
+                  <Badge variant="secondary" className="gap-1">
+                    <FileText className="h-3 w-3" /> TXT
+                  </Badge>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 pb-4">
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${message.role === MessageRole.USER ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[85%] px-4 py-3 rounded-2xl ${
+                        message.role === MessageRole.USER
+                          ? 'bg-primary text-primary-foreground rounded-br-md'
+                          : 'bg-muted rounded-bl-md'
+                      }`}
+                    >
+                      {message.role === MessageRole.ASSISTANT ? (
+                        <>
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown>{message.content || '...'}</ReactMarkdown>
+                          </div>
+                          {message.sources && message.sources.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-border">
+                              <p className="text-xs font-medium text-muted-foreground mb-2">
+                                Sources:
+                              </p>
+                              <div className="space-y-1">
+                                {message.sources.map((source, idx) => (
+                                  <div key={idx} className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <FileText className="h-3 w-3" />
+                                    {source.document_name}
+                                    {source.page && ` (Page ${source.page})`}
+                                    {source.similarity_score && (
+                                      <Badge variant="outline" className="ml-1 text-xs">
+                                        {(source.similarity_score * 100).toFixed(0)}%
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </ScrollArea>
 
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={models.length === 0 ? 'No models available' : 'Type a message...'}
-              disabled={models.length === 0 || sending}
-              rows={1}
-              className="min-h-[40px] max-h-[120px] resize-none"
-            />
+          {/* Input Area */}
+          <div className="p-4 border-t border-border">
+            <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.csv,.txt"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={models.length === 0 || uploading || sending}
+              >
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Paperclip className="h-4 w-4" />
+                )}
+              </Button>
 
-            <Button
-              onClick={handleSend}
-              disabled={!input.trim() || models.length === 0 || sending}
-            >
-              {sending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={models.length === 0 ? 'No models available' : 'Type a message...'}
+                disabled={models.length === 0 || sending}
+                rows={1}
+                className="min-h-[44px] max-h-[120px] resize-none"
+              />
+
+              <Button
+                onClick={handleSend}
+                disabled={!input.trim() || models.length === 0 || sending}
+              >
+                {sending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Press Enter to send, Shift+Enter for new line
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground mt-2 text-center">
-            Press Enter to send, Shift+Enter for new line
-          </p>
-        </div>
+        </Card>
       </div>
-    </div>
+    </AppLayout>
   )
 }

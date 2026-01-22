@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Bot, ArrowLeft } from 'lucide-react'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -49,74 +50,120 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-          <CardDescription>
-            Enter your details to create your account
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Full Name</Label>
-              <Input
-                id="full_name"
-                type="text"
-                placeholder="John Doe"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                required
-              />
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Left Side - Branding (hidden on mobile) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-card border-r border-border p-12 flex-col justify-between">
+        <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+            <Bot className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <span className="text-xl font-semibold">LLM RAG</span>
+        </Link>
+        
+        <div className="space-y-4">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Get started today
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-md">
+            Create your account to start using AI-powered document intelligence and chat with your data.
+          </p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Built with Next.js, FastAPI, and LangChain
+        </p>
+      </div>
+
+      {/* Right Side - Form */}
+      <div className="flex-1 flex flex-col justify-center items-center p-8">
+        <div className="w-full max-w-md">
+          {/* Mobile Header */}
+          <div className="lg:hidden mb-8">
+            <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
+              <ArrowLeft className="h-4 w-4" />
+              Back to home
+            </Link>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+                <Bot className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-semibold">LLM RAG</span>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Create a password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm your password"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                required
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account...' : 'Sign up'}
-            </Button>
-            <p className="text-sm text-center text-muted-foreground">
-              Already have an account?{' '}
-              <Link href="/login" className="text-primary hover:underline">
-                Sign in
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Card>
+          </div>
+
+          <Card className="border-0 lg:border shadow-none lg:shadow-sm">
+            <CardHeader className="space-y-1 px-0 lg:px-6">
+              <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+              <CardDescription>
+                Enter your details to create your account
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleSubmit}>
+              <CardContent className="space-y-4 px-0 lg:px-6">
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">Full Name</Label>
+                  <Input
+                    id="full_name"
+                    type="text"
+                    placeholder="John Doe"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    required
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Create a password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirm your password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    required
+                    className="h-11"
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col space-y-4 px-0 lg:px-6">
+                <Button type="submit" className="w-full h-11" disabled={loading}>
+                  {loading ? 'Creating account...' : 'Sign up'}
+                </Button>
+                <p className="text-sm text-center text-muted-foreground">
+                  Already have an account?{' '}
+                  <Link href="/login" className="text-primary hover:underline font-medium">
+                    Sign in
+                  </Link>
+                </p>
+              </CardFooter>
+            </form>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

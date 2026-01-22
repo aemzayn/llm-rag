@@ -1,13 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
 import { Model, Document, DocumentStatus } from '@/types'
 import toast from 'react-hot-toast'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Upload, Trash2, FileText } from 'lucide-react'
 
-export default function DocumentsPage() {
+function DocumentsContent() {
   const searchParams = useSearchParams()
   const [models, setModels] = useState<Model[]>([])
   const [selectedModel, setSelectedModel] = useState<number | null>(null)
@@ -127,180 +135,164 @@ export default function DocumentsPage() {
   }
 
   const getStatusBadge = (status: DocumentStatus) => {
-    const styles = {
-      [DocumentStatus.UPLOADING]: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      [DocumentStatus.PROCESSING]: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      [DocumentStatus.COMPLETED]: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      [DocumentStatus.FAILED]: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    const variants: Record<DocumentStatus, "default" | "secondary" | "destructive" | "outline"> = {
+      [DocumentStatus.UPLOADING]: 'secondary',
+      [DocumentStatus.PROCESSING]: 'outline',
+      [DocumentStatus.COMPLETED]: 'default',
+      [DocumentStatus.FAILED]: 'destructive',
     }
 
-    return (
-      <span className={`px-2 py-1 text-xs rounded ${styles[status]}`}>
-        {status}
-      </span>
-    )
+    return <Badge variant={variants[status]}>{status}</Badge>
   }
 
   return (
     <AdminLayout>
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-          Documents
-        </h1>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Documents</h1>
+          <p className="text-muted-foreground mt-1">Manage documents for your AI models</p>
+        </div>
 
         {loading ? (
-          <div className="text-center py-12">Loading...</div>
+          <div className="text-center py-12 text-muted-foreground">Loading...</div>
         ) : models.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              No models available. Create a model first.
-            </p>
-            <button
-              onClick={() => window.location.href = '/admin/models'}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Go to Models
-            </button>
-          </div>
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <p className="text-muted-foreground mb-4">
+                No models available. Create a model first.
+              </p>
+              <Button onClick={() => window.location.href = '/admin/models'}>
+                Go to Models
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <>
             {/* Model Selector */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Select Model
-              </label>
-              <select
-                value={selectedModel || ''}
-                onChange={(e) => setSelectedModel(parseInt(e.target.value))}
-                className="w-full md:w-96 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            <div className="space-y-2">
+              <Label>Select Model</Label>
+              <Select
+                value={selectedModel?.toString() || ''}
+                onValueChange={(value) => setSelectedModel(parseInt(value))}
               >
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full md:w-96">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id.toString()}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Upload Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                Upload Document
-              </h2>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Select File (PDF or CSV, max 250MB)
-                  </label>
-                  <input
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Upload Document
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Select File (PDF or CSV, max 250MB)</Label>
+                  <Input
                     type="file"
                     accept=".pdf,.csv"
                     onChange={handleFileSelect}
                     disabled={uploading}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
 
                 {selectedFile && (
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {selectedFile.name}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
+                  <div className="flex items-center justify-between p-3 bg-secondary rounded-md">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <div>
+                        <p className="text-sm font-medium">{selectedFile.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
                     </div>
-                    <button
-                      onClick={handleUpload}
-                      disabled={uploading}
-                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
+                    <Button onClick={handleUpload} disabled={uploading}>
                       {uploading ? 'Uploading...' : 'Upload'}
-                    </button>
+                    </Button>
                   </div>
                 )}
 
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   Documents will be processed in the background. Refresh the page to see updates.
                 </p>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Documents List */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
                   Documents in {models.find(m => m.id === selectedModel)?.name}
-                </h2>
-              </div>
-
-              {documents.length === 0 ? (
-                <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-                  No documents uploaded yet
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-900">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Filename
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Type
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Size
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Uploaded
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {documents.length === 0 ? (
+                  <div className="py-12 text-center text-muted-foreground">
+                    No documents uploaded yet
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Filename</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Size</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Uploaded</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {documents.map((doc) => (
-                        <tr key={doc.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {doc.filename}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {doc.file_type.toUpperCase()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {(doc.file_size / 1024 / 1024).toFixed(2)} MB
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {getStatusBadge(doc.status)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(doc.created_at).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <button
+                        <TableRow key={doc.id}>
+                          <TableCell className="font-medium">{doc.filename}</TableCell>
+                          <TableCell>{doc.file_type.toUpperCase()}</TableCell>
+                          <TableCell>{(doc.file_size / 1024 / 1024).toFixed(2)} MB</TableCell>
+                          <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                          <TableCell>{new Date(doc.created_at).toLocaleString()}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleDelete(doc.id, doc.filename)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                             >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
       </div>
     </AdminLayout>
+  )
+}
+
+export default function DocumentsPage() {
+  return (
+    <Suspense fallback={
+      <AdminLayout>
+        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+      </AdminLayout>
+    }>
+      <DocumentsContent />
+    </Suspense>
   )
 }

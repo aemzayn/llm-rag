@@ -2,14 +2,14 @@ from celery import Task
 from app.workers.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.services.document_service import DocumentProcessor
-from app.models.document import DOCUMENT_STATUS_FAILED
+from app.models.document import DOCUMENT_STATUS_FAILED, Document
 import logging
 import asyncio
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(bind=True, max_retries=3)
+@celery_app.task(bind=True, max_retries=3, name="tasks.process_document")
 def process_document_task(self: Task, document_id: int):
     """
     Process uploaded document: parse, chunk, embed, and store in vector DB
@@ -33,18 +33,17 @@ def process_document_task(self: Task, document_id: int):
         return {
             "status": "success",
             "document_id": document_id,
-            "message": "Document processed successfully"
+            "message": "Document processed successfully",
         }
 
     except Exception as e:
         logger.error(f"Error processing document {document_id}: {e}")
 
         # Update document status to failed
-        from app.models.document import Document
         document = db.query(Document).filter(Document.id == document_id).first()
         if document:
-            document.status = DOCUMENT_STATUS_FAILED
-            document.error_message = str(e)
+            document.__setattr__("status", DOCUMENT_STATUS_FAILED)
+            document.__setattr__("error_message", str(e))
             db.commit()
 
         # Retry on failure

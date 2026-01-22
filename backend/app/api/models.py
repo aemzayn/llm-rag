@@ -9,7 +9,7 @@ from app.schemas.model import (
     ModelUpdate,
     ModelResponse,
     ModelWithAccessResponse,
-    ModelUserAssignment
+    ModelUserAssignment,
 )
 from app.schemas.user import UserResponse
 from app.services import model_service
@@ -21,20 +21,23 @@ router = APIRouter()
 async def create_model(
     model_data: ModelCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_admin),
 ):
     """Create new model (Admin only)"""
     # Check if model name already exists
-    existing = db.query(model_service.Model).filter(
-        model_service.Model.name == model_data.name
-    ).first()
+    existing = (
+        db.query(model_service.Model)
+        .filter(model_service.Model.name == model_data.name)
+        .first()
+    )
     if existing:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Model name already exists"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Model name already exists"
         )
 
-    model = model_service.create_model(db, model_data, current_user.id)
+    model = model_service.create_model(
+        db, model_data, current_user.__getattribute__("id")
+    )
 
     # Add has_api_key flag
     response = ModelResponse.model_validate(model)
@@ -47,7 +50,7 @@ async def list_models(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """List accessible models"""
     models = model_service.get_models(db, skip, limit, current_user)
@@ -66,32 +69,32 @@ async def list_models(
 async def get_model(
     model_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get model details"""
     model = model_service.get_model(db, model_id)
     if not model:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Model not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Model not found"
         )
 
     # Check access
     if not model_service.check_user_access(db, model_id, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this model"
+            detail="You don't have access to this model",
         )
 
     # Get counts
-    user_count = db.query(model_service.ModelUserAccess).filter(
-        model_service.ModelUserAccess.model_id == model_id
-    ).count()
+    user_count = (
+        db.query(model_service.ModelUserAccess)
+        .filter(model_service.ModelUserAccess.model_id == model_id)
+        .count()
+    )
 
     from app.models.document import Document
-    document_count = db.query(Document).filter(
-        Document.model_id == model_id
-    ).count()
+
+    document_count = db.query(Document).filter(Document.model_id == model_id).count()
 
     # Build response
     response = ModelWithAccessResponse.model_validate(model)
@@ -107,7 +110,7 @@ async def update_model(
     model_id: int,
     model_data: ModelUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_admin),
 ):
     """Update model (Admin only)"""
     model = model_service.update_model(db, model_id, model_data)
@@ -121,7 +124,7 @@ async def update_model(
 async def delete_model(
     model_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_admin),
 ):
     """Delete model (Admin only)"""
     model_service.delete_model(db, model_id)
@@ -133,7 +136,7 @@ async def assign_users_to_model(
     model_id: int,
     assignment: ModelUserAssignment,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_admin),
 ):
     """Assign users to model (Admin only)"""
     model_service.assign_users_to_model(db, model_id, assignment.user_ids)
@@ -144,14 +147,13 @@ async def assign_users_to_model(
 async def get_model_users(
     model_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_admin),
 ):
     """Get users with access to a model (Admin only)"""
     model = model_service.get_model(db, model_id)
     if not model:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Model not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Model not found"
         )
 
     users = model_service.get_model_users(db, model_id)

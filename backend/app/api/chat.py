@@ -1,4 +1,13 @@
-from fastapi import APIRouter, WebSocket, Depends, HTTPException, status, WebSocketDisconnect, UploadFile, File
+from fastapi import (
+    APIRouter,
+    WebSocket,
+    Depends,
+    HTTPException,
+    status,
+    WebSocketDisconnect,
+    UploadFile,
+    File,
+)
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
@@ -10,7 +19,7 @@ from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
     ChatMessageResponse,
-    ChatSessionResponse
+    ChatSessionResponse,
 )
 from app.services.rag_service import RAGService
 from app.services.llm_service import LLMService
@@ -28,21 +37,23 @@ logger = logging.getLogger(__name__)
 async def chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Chat with RAG (non-streaming)"""
+
+    user_id = current_user.__getattribute__("id")
+
     # Verify model access
     model = model_service.get_model(db, request.model_id)
     if not model:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Model not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Model not found"
         )
 
     if not model_service.check_user_access(db, request.model_id, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this model"
+            detail="You don't have access to this model",
         )
 
     # Initialize services
@@ -51,40 +62,38 @@ async def chat(
 
     # Get or create session
     session = rag_service.get_or_create_session(
-        user_id=current_user.id,
+        user_id=current_user.__getattribute__("id"),
         model_id=request.model_id,
-        session_id=request.session_id
+        session_id=request.session_id,
     )
+
+    session_id = session.__getattribute__("id")
 
     # Save user message
     user_message = rag_service.save_message(
-        session_id=session.id,
-        user_id=current_user.id,
+        session_id=session_id,
+        user_id=user_id,
         role=MESSAGE_ROLE_USER,
-        content=request.message
+        content=request.message,
     )
 
     # Search for relevant chunks
     relevant_chunks = rag_service.search_similar_chunks(
-        query=request.message,
-        model_id=request.model_id,
-        top_k=request.top_k
+        query=request.message, model_id=request.model_id, top_k=request.top_k
     )
 
     # Build context and prompt
     context = rag_service.build_context(relevant_chunks)
 
     # Get chat history for context
-    history = rag_service.get_chat_history(session.id, limit=10)
+    history = rag_service.get_chat_history(session_id, limit=10)
     history_list = [
         {"role": msg.role, "content": msg.content}
         for msg in reversed(history[1:])  # Exclude current message
     ]
 
     prompt = rag_service.build_prompt(
-        query=request.message,
-        context=context,
-        chat_history=history_list
+        query=request.message, context=context, chat_history=history_list
     )
 
     # Generate response
@@ -94,7 +103,7 @@ async def chat(
         logger.error(f"LLM generation error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate response: {str(e)}"
+            detail=f"Failed to generate response: {str(e)}",
         )
 
     # Format sources
@@ -104,24 +113,28 @@ async def chat(
 
     # Save assistant message
     assistant_message = rag_service.save_message(
-        session_id=session.id,
-        user_id=current_user.id,
+        session_id=session_id,
+        user_id=user_id,
         role=MESSAGE_ROLE_ASSISTANT,
         content=response_text,
-        sources=sources
+        sources=sources,
     )
 
     return {
-        "session_id": session.id,
+        "session_id": session_id,
         "message": assistant_message,
-        "sources": sources
+        "sources": sources,
     }
 
 
 @router.websocket("/ws")
-async def chat_websocket(websocket: WebSocket, token: str, db: Session = Depends(get_db)):
+async def chat_websocket(
+    websocket: WebSocket, token: str, db: Session = Depends(get_db)
+):
     """WebSocket endpoint for streaming chat"""
     await websocket.accept()
+
+    user_id = None
 
     try:
         # Authenticate user from token
@@ -132,11 +145,11 @@ async def chat_websocket(websocket: WebSocket, token: str, db: Session = Depends
 
         user_id = payload.get("sub")
         user = db.query(User).filter(User.id == user_id).first()
-        if not user or not user.is_active:
+        if not user or not user.__getattribute__("is_active"):
             await websocket.close(code=4001, reason="User not found or inactive")
             return
 
-        logger.info(f"WebSocket connection established for user {user.id}")
+        logger.info(f"WebSocket connection established for user {user_id}")
 
         # Main message loop
         while True:
@@ -149,19 +162,17 @@ async def chat_websocket(websocket: WebSocket, token: str, db: Session = Depends
             top_k = data.get("top_k", 5)
 
             if not message or not model_id:
-                await websocket.send_json({
-                    "type": "error",
-                    "error": "Missing message or model_id"
-                })
+                await websocket.send_json(
+                    {"type": "error", "error": "Missing message or model_id"}
+                )
                 continue
 
             # Verify model access
             model = model_service.get_model(db, model_id)
             if not model or not model_service.check_user_access(db, model_id, user):
-                await websocket.send_json({
-                    "type": "error",
-                    "error": "Model not found or access denied"
-                })
+                await websocket.send_json(
+                    {"type": "error", "error": "Model not found or access denied"}
+                )
                 continue
 
             # Initialize services
@@ -170,53 +181,50 @@ async def chat_websocket(websocket: WebSocket, token: str, db: Session = Depends
 
             # Get or create session
             session = rag_service.get_or_create_session(
-                user_id=user.id,
+                user_id=user.__getattribute__("id"),
                 model_id=model_id,
-                session_id=session_id
+                session_id=session_id,
             )
+
+            session_id = session.__getattribute__("id")
 
             # Save user message
             user_message = rag_service.save_message(
-                session_id=session.id,
-                user_id=user.id,
+                session_id=session_id,
+                user_id=user_id,
                 role=MESSAGE_ROLE_USER,
-                content=message
+                content=message,
             )
 
             # Send acknowledgment
-            await websocket.send_json({
-                "type": "user_message",
-                "session_id": session.id,
-                "message_id": user_message.id
-            })
+            await websocket.send_json(
+                {
+                    "type": "user_message",
+                    "session_id": session.id,
+                    "message_id": user_message.id,
+                }
+            )
 
             # Search for relevant chunks
             relevant_chunks = rag_service.search_similar_chunks(
-                query=message,
-                model_id=model_id,
-                top_k=top_k
+                query=message, model_id=model_id, top_k=top_k
             )
 
             # Send sources
             if relevant_chunks:
                 sources = rag_service.format_sources_for_response(relevant_chunks)
-                await websocket.send_json({
-                    "type": "sources",
-                    "sources": sources
-                })
+                await websocket.send_json({"type": "sources", "sources": sources})
 
             # Build context and prompt
             context = rag_service.build_context(relevant_chunks)
-            history = rag_service.get_chat_history(session.id, limit=10)
+            history = rag_service.get_chat_history(session_id, limit=10)
             history_list = [
                 {"role": msg.role, "content": msg.content}
                 for msg in reversed(history[1:])
             ]
 
             prompt = rag_service.build_prompt(
-                query=message,
-                context=context,
-                chat_history=history_list
+                query=message, context=context, chat_history=history_list
             )
 
             # Stream response
@@ -226,34 +234,31 @@ async def chat_websocket(websocket: WebSocket, token: str, db: Session = Depends
 
                 async for chunk in llm_service.generate_stream(prompt):
                     response_text += chunk
-                    await websocket.send_json({
-                        "type": "stream_chunk",
-                        "content": chunk
-                    })
+                    await websocket.send_json(
+                        {"type": "stream_chunk", "content": chunk}
+                    )
 
                 await websocket.send_json({"type": "stream_end"})
 
             except Exception as e:
                 logger.error(f"Streaming error: {e}")
-                await websocket.send_json({
-                    "type": "error",
-                    "error": f"Failed to generate response: {str(e)}"
-                })
+                await websocket.send_json(
+                    {"type": "error", "error": f"Failed to generate response: {str(e)}"}
+                )
                 continue
 
             # Save assistant message
             assistant_message = rag_service.save_message(
-                session_id=session.id,
-                user_id=user.id,
+                session_id=session_id,
+                user_id=user_id,
                 role=MESSAGE_ROLE_ASSISTANT,
                 content=response_text,
-                sources=sources if relevant_chunks else None
+                sources=sources if relevant_chunks else None,
             )
 
-            await websocket.send_json({
-                "type": "message_saved",
-                "message_id": assistant_message.id
-            })
+            await websocket.send_json(
+                {"type": "message_saved", "message_id": assistant_message.id}
+            )
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for user {user_id}")
@@ -267,16 +272,14 @@ async def chat_websocket(websocket: WebSocket, token: str, db: Session = Depends
 
 @router.get("/sessions", response_model=List[ChatSessionResponse])
 async def get_sessions(
-    model_id: int = None,
+    model_id: int | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get user's chat sessions"""
     rag_service = RAGService(db)
-    sessions = rag_service.get_user_sessions(
-        user_id=current_user.id,
-        model_id=model_id
-    )
+    user_id = current_user.__getattribute__("id")
+    sessions = rag_service.get_user_sessions(user_id=user_id, model_id=model_id)
     return sessions
 
 
@@ -285,7 +288,7 @@ async def get_session_messages(
     session_id: int,
     limit: int = 50,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get messages for a chat session"""
     # Verify session belongs to user
@@ -293,10 +296,10 @@ async def get_session_messages(
     messages = rag_service.get_chat_history(session_id, limit)
 
     # Check ownership
-    if messages and messages[0].user_id != current_user.id:
+    user_id = current_user.__getattribute__("id")
+    if messages and messages[0].user_id != user_id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
     return list(reversed(messages))
@@ -306,20 +309,20 @@ async def get_session_messages(
 async def delete_session(
     session_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a chat session"""
     from app.models.chat import ChatSession
 
-    session = db.query(ChatSession).filter(
-        ChatSession.id == session_id,
-        ChatSession.user_id == current_user.id
-    ).first()
+    session = (
+        db.query(ChatSession)
+        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+        .first()
+    )
 
     if not session:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
 
     db.delete(session)
@@ -330,9 +333,9 @@ async def delete_session(
 @router.post("/upload")
 async def upload_file_in_chat(
     file: UploadFile = File(...),
-    model_id: int = None,
+    model_id: int | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload a file during chat for immediate processing
@@ -340,51 +343,55 @@ async def upload_file_in_chat(
     """
     if not model_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="model_id is required"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="model_id is required"
         )
 
     # Verify model access
     model = model_service.get_model(db, model_id)
     if not model:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Model not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Model not found"
         )
 
     if not model_service.check_user_access(db, model_id, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this model"
+            detail="You don't have access to this model",
         )
 
     # Validate file type
-    allowed_types = ['application/pdf', 'text/csv', 'text/plain']
-    if file.content_type not in allowed_types and not file.filename.endswith(('.pdf', '.csv', '.txt')):
+    allowed_types = ["application/pdf", "text/csv", "text/plain"]
+    filename = file.__getattribute__("filename")
+    if file.content_type not in allowed_types and not filename.endswith(
+        (".pdf", ".csv", ".txt")
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF, CSV, and TXT files are supported"
+            detail="Only PDF, CSV, and TXT files are supported",
         )
 
     # Process document upload
     try:
         processor = DocumentProcessor(db)
-        document = await processor.save_upload(file, model_id, current_user.id)
+        user_id = current_user.__getattribute__("id")
+        document = await processor.save_upload(file, model_id, user_id)
 
         # Queue processing task
         process_document_task.delay(document.id)
 
-        logger.info(f"User {current_user.id} uploaded file {file.filename} to model {model_id} in chat")
+        logger.info(
+            f"User {user_id} uploaded file {filename} to model {model_id} in chat"
+        )
 
         return {
             "document_id": document.id,
             "filename": document.filename,
             "status": "processing",
-            "message": "File uploaded successfully and is being processed. You can start asking questions once processing is complete."
+            "message": "File uploaded successfully and is being processed. You can start asking questions once processing is complete.",
         }
     except Exception as e:
         logger.error(f"File upload error in chat: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload file: {str(e)}"
+            detail=f"Failed to upload file: {str(e)}",
         )

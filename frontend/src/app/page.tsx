@@ -82,7 +82,7 @@ export default function Home() {
             <Button asChild size="lg" className="w-full group">
               <Link href="/login">
                 Sign In
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform motion-reduce:transform-none" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="w-full">

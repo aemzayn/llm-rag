@@ -157,21 +157,21 @@ export default function AdminDashboard() {
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none" />
                     <span className="font-medium">Database</span>
                   </div>
                   <Badge variant="outline" className="text-green-500 border-green-500/50">Connected</Badge>
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none" />
                     <span className="font-medium">Celery Worker</span>
                   </div>
                   <Badge variant="outline" className="text-green-500 border-green-500/50">Running</Badge>
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none" />
                     <span className="font-medium">Vector Database</span>
                   </div>
                   <Badge variant="outline" className="text-green-500 border-green-500/50">Ready</Badge>

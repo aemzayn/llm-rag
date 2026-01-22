@@ -5,12 +5,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import api from '@/lib/api'
 import { User, UserRole } from '@/types'
-import toast from 'react-hot-toast'
 import AppLayout from '@/components/AppLayout'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MessageSquare, Settings, User as UserIcon, Zap, FileText, Bot } from 'lucide-react'
+import { MessageSquare, Zap, FileText, Bot } from 'lucide-react'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -56,55 +54,61 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="group hover:border-primary/50 transition-all cursor-pointer" onClick={() => router.push('/chat')}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                </div>
-                <Zap className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardTitle className="text-lg mb-1">Start Chatting</CardTitle>
-              <CardDescription>
-                Chat with AI using your uploaded documents
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:border-primary/50 transition-all cursor-pointer" onClick={() => router.push('/admin/documents')}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-primary" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardTitle className="text-lg mb-1">Upload Documents</CardTitle>
-              <CardDescription>
-                Add PDF, CSV, or TXT files for RAG
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPERADMIN) && (
-            <Card className="group hover:border-primary/50 transition-all cursor-pointer" onClick={() => router.push('/admin/models')}>
+          <Link href="/chat" className="block">
+            <Card className="group hover:border-primary/50 transition-all h-full">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Bot className="h-5 w-5 text-primary" />
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                  </div>
+                  <Zap className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardTitle className="text-lg mb-1">Start Chatting</CardTitle>
+                <CardDescription>
+                  Chat with AI using your uploaded documents
+                </CardDescription>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/documents" className="block">
+            <Card className="group hover:border-primary/50 transition-all h-full">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-primary" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardTitle className="text-lg mb-1">Manage Models</CardTitle>
+                <CardTitle className="text-lg mb-1">Upload Documents</CardTitle>
                 <CardDescription>
-                  Configure and manage AI models
+                  Add PDF, CSV, or TXT files for RAG
                 </CardDescription>
               </CardContent>
             </Card>
+          </Link>
+
+          {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPERADMIN) && (
+            <Link href="/admin/models" className="block">
+              <Card className="group hover:border-primary/50 transition-all h-full">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Bot className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CardTitle className="text-lg mb-1">Manage Models</CardTitle>
+                  <CardDescription>
+                    Configure and manage AI models
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            </Link>
           )}
         </div>
 
